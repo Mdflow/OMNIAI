@@ -1,0 +1,8 @@
+{
+  "name": "OmniChat - ChatGPT Experience",
+  "description": "A high-performance, feature-packed conversational AI inspired by ChatGPT with real-time streaming, multimodal image analysis, markdown syntax highlighting, voice readout, search, prompt templates, and chat management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
