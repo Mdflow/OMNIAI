@@ -34,6 +34,41 @@ router.get(routes, (_req, res) => {
   });
 });
 
+// API key status endpoint used by the Settings modal ("Gemini API Status").
+// Reports whether GEMINI_API_KEY is configured and, when it is, verifies it with a
+// minimal Gemini call so the UI can tell "missing" from "rejected by Google".
+const keyStatusRoutes = [
+  '/key-status',
+  '/api/key-status',
+  '/.netlify/functions/api/key-status',
+];
+
+router.get(keyStatusRoutes, async (_req, res) => {
+  if (!apiKey) {
+    res.json({ configured: false, valid: false });
+    return;
+  }
+
+  const keyPreview = `...${apiKey.slice(-4)}`;
+  const source = 'process.env.GEMINI_API_KEY';
+
+  try {
+    await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: 'ping',
+    });
+    res.json({ configured: true, valid: true, source, keyPreview });
+  } catch (err: any) {
+    res.json({
+      configured: true,
+      valid: false,
+      source,
+      keyPreview,
+      error: err?.message || 'Invalid API key or project not enabled.',
+    });
+  }
+});
+
 const modelRoutes = [
   '/models',
   '/api/models',
