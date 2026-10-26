@@ -1,0 +1,51 @@
+# Base44 sandbox dev stack for OmniChat.
+#
+# The whole app is one Node process: server.ts (run through tsx) starts Express on
+# port 3000 and mounts Vite in middleware mode, so the SPA, the HMR client and the
+# /api/* routes all live on a single origin (host port 3000).
+#
+# Run with:  docker compose -f docker-compose.base44.yml up -d --build
+services:
+  web:
+    # Plain runtime image + bind-mounted source: every edit is picked up without a rebuild.
+    image: oven/bun:1
+    working_dir: /app
+    restart: on-failure
+    # Dependencies live in the bind-mounted ./node_modules, so they are installed on
+    # startup from the committed bun.lock (the project's lockfile; there is no package-lock.json).
+    command:
+      - sh
+      - -ec
+      - bun install --frozen-lockfile && exec bun run dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    environment:
+      # PORT is read by server.ts; it binds 0.0.0.0 itself.
+      - PORT=3000
+      - NODE_ENV=development
+      # Vite >= 6.1 appends this to server.allowedHosts so the preview proxy host
+      # (<port>-<sandbox id>.$BASE44_SANDBOX_HOST_DOMAIN) is accepted.
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+      # Sandbox flag, passed through for app code that gates sandbox-only overrides.
+      - BASE44_PREVIEW_MODE
+    env_file:
+      # Platform-managed secrets (GEMINI_API_KEY). Listed last so real values always
+      # win over anything else. Never put these keys under `environment:`.
+      - /run/base44/app.env
+    healthcheck:
+      # Probes the API route and the SPA entry point, printing which one failed.
+      test:
+        - CMD
+        - bun
+        - -e
+        - "const u=['http://127.0.0.1:3000/health','http://127.0.0.1:3000/'];for(const x of u){try{const r=await fetch(x);if(!r.ok){console.log(x+' -> '+r.status);process.exit(1)}}catch(e){console.log(x+' -> '+e.message);process.exit(1)}}process.exit(0)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    labels:
+      base44.project: OmniChat
+      base44.kind: web
+      base44.port: "3000"

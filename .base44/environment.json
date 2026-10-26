@@ -1,0 +1,12 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "GEMINI_API_KEY",
+      "description": "Google Gemini API key used by the /api/chat/stream endpoint. Get a free key at https://aistudio.google.com/app/apikey. The app boots without it (/health reports hasApiKey: false) but chat requests fail with a 500 until it is set.",
+      "requiredAtBoot": false
+    }
+  ]
+}
