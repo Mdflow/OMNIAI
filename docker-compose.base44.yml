@@ -8,15 +8,18 @@
 services:
   web:
     # Plain runtime image + bind-mounted source: every edit is picked up without a rebuild.
-    image: oven/bun:1
+    build:
+      context: .
+      dockerfile: Dockerfile.base44
     working_dir: /app
     restart: on-failure
     # Dependencies live in the bind-mounted ./node_modules, so they are installed on
-    # startup from the committed bun.lock (the project's lockfile; there is no package-lock.json).
+    # startup from the committed bun.lock (the project's lockfile). The app itself runs
+    # on Node via tsx, which is how the repo's own `npm run dev` runs it.
     command:
       - sh
       - -ec
-      - bun install --frozen-lockfile && exec bun run dev
+      - bun install --frozen-lockfile && exec node_modules/.bin/tsx server.ts
     ports:
       - "3000:3000"
     volumes:
@@ -38,9 +41,9 @@ services:
       # Probes the API route and the SPA entry point, printing which one failed.
       test:
         - CMD
-        - bun
+        - node
         - -e
-        - "const u=['http://127.0.0.1:3000/health','http://127.0.0.1:3000/'];for(const x of u){try{const r=await fetch(x);if(!r.ok){console.log(x+' -> '+r.status);process.exit(1)}}catch(e){console.log(x+' -> '+e.message);process.exit(1)}}process.exit(0)"
+        - "Promise.all(['http://127.0.0.1:3000/health','http://127.0.0.1:3000/'].map(u=>fetch(u).then(r=>{if(!r.ok)throw new Error(u+' -> '+r.status)}))).then(()=>process.exit(0)).catch(e=>{console.log(e.message);process.exit(1)})"
       interval: 10s
       timeout: 5s
       retries: 6

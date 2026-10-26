@@ -348,12 +348,20 @@ export default function App() {
             break;
           }
 
+          let parsed: any;
           try {
-            const parsed = JSON.parse(dataPayload);
-            if (parsed.error) {
-              throw new Error(parsed.error);
-            }
-            if (parsed.text) {
+            parsed = JSON.parse(dataPayload);
+          } catch {
+            // Ignore malformed or partial chunk fragments and keep reading.
+            continue;
+          }
+
+          if (parsed.error) {
+            // Surface server-side failures (bad API key, upstream error) on the message.
+            throw new Error(String(parsed.error));
+          }
+
+          if (parsed.text) {
               setConversations((prev) =>
                 prev.map((c) => {
                   if (c.id === convId) {
@@ -370,11 +378,6 @@ export default function App() {
                   return c;
                 })
               );
-            }
-          } catch (jsonErr: any) {
-            if (jsonErr.message && jsonErr.message !== 'Unexpected end of JSON input') {
-              console.warn('Chunk parse notice:', jsonErr);
-            }
           }
         }
       }

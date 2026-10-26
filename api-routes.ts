@@ -303,9 +303,14 @@ router.post(chatStreamRoutes, async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
 
+  // Detect a client that disconnects mid-generation. This must watch the *response*:
+  // since Node 16 the request's own 'close' event fires as soon as the request body has
+  // been read, which would mark every request as aborted and leave the stream open forever.
   let isAborted = false;
-  req.on('close', () => {
-    isAborted = true;
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      isAborted = true;
+    }
   });
 
   try {
@@ -428,7 +433,17 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
   } catch (error: any) {
     console.error('Error during streaming:', error);
     if (!isAborted) {
-      const errorMsg = error?.message || 'An error occurred while generating the response.';
+      // The SDK wraps the upstream error body twice, which renders unreadably in the UI.
+      // Unwrap the envelope so the client can show the actual reason (e.g. an invalid API key).
+      let errorMsg = String(error?.message || '').trim();
+      try {
+        const body = JSON.parse(errorMsg);
+        const upstream = typeof body?.error?.message === 'string' ? JSON.parse(body.error.message) : body;
+        errorMsg = upstream?.error?.message || body?.error?.message || errorMsg;
+      } catch {
+        // Not a JSON envelope — keep the original message.
+      }
+      errorMsg = errorMsg || 'An error occurred while generating the response.';
       res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
       res.write(`data: [DONE]\n\n`);
       res.end();
