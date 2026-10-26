@@ -1,6 +1,5 @@
 import express, { Router } from 'express';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
 import * as cheerio from 'cheerio';
 
 dotenv.config();
@@ -8,16 +7,23 @@ dotenv.config();
 const router = Router();
 router.use(express.json({ limit: '25mb' }));
 
-// Initialize GoogleGenAI server-side with telemetry User-Agent
-const apiKey = process.env.GEMINI_API_KEY || '';
-const ai = new GoogleGenAI({
-  apiKey,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
+// Chat is backed by an OpenAI-compatible API (OpenRouter). The API key is supplied by the
+// user in the app and sent with each request; the server proxies it to the provider.
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+// The app's model personas are system-prompt modes. All map to one capable, widely-available,
+// vision-capable OpenRouter model so any valid key works without per-model setup.
+const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
+const MODEL_MAP: Record<string, string> = {
+  'gemini-3.6-flash': OPENROUTER_MODEL,
+  'gemini-3.5-flash': OPENROUTER_MODEL,
+  'gemini-3.6-flash-creative': OPENROUTER_MODEL,
+  'gemini-3.6-flash-coder': OPENROUTER_MODEL,
+  'gemini-3.8-flash': OPENROUTER_MODEL,
+  'gemini-3.8-flash-creative': OPENROUTER_MODEL,
+  'gemini-3.8-flash-coder': OPENROUTER_MODEL,
+  'gemini-3.8-flash-thinking': OPENROUTER_MODEL,
+};
 
 // Helper to handle both /api/* and direct /* routing
 const routes = [
@@ -27,44 +33,60 @@ const routes = [
 ];
 
 router.get(routes, (_req, res) => {
-  res.json({
-    status: 'ok',
-    hasApiKey: Boolean(apiKey && apiKey.length > 0),
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API key status endpoint used by the Settings modal ("Gemini API Status").
-// Reports whether GEMINI_API_KEY is configured and, when it is, verifies it with a
-// minimal Gemini call so the UI can tell "missing" from "rejected by Google".
+// API key status endpoint used by the Settings modal. The key is supplied by the user and
+// verified with a 1-token OpenRouter call so the UI can tell "missing" from "rejected".
 const keyStatusRoutes = [
   '/key-status',
   '/api/key-status',
   '/.netlify/functions/api/key-status',
 ];
 
-router.get(keyStatusRoutes, async (_req, res) => {
+router.post(keyStatusRoutes, async (req, res) => {
+  const apiKey = (req.body?.apiKey || '').toString().trim();
+
   if (!apiKey) {
     res.json({ configured: false, valid: false });
     return;
   }
 
   const keyPreview = `...${apiKey.slice(-4)}`;
-  const source = 'process.env.GEMINI_API_KEY';
+  const source = 'OpenRouter';
 
   try {
-    await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: 'ping',
+    const r = await fetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'ping' }],
+      }),
     });
-    res.json({ configured: true, valid: true, source, keyPreview });
+
+    if (r.ok) {
+      res.json({ configured: true, valid: true, source, keyPreview });
+      return;
+    }
+
+    let errorMsg = `OpenRouter responded with status ${r.status}`;
+    try {
+      const data = await r.json();
+      errorMsg = data?.error?.message || data?.error || errorMsg;
+    } catch {}
+    res.json({ configured: true, valid: false, source, keyPreview, error: errorMsg });
   } catch (err: any) {
     res.json({
       configured: true,
       valid: false,
       source,
       keyPreview,
-      error: err?.message || 'Invalid API key or project not enabled.',
+      error: err?.message || 'Could not contact OpenRouter to verify the API key.',
     });
   }
 });
@@ -311,21 +333,22 @@ const chatStreamRoutes = [
 ];
 
 router.post(chatStreamRoutes, async (req, res) => {
-  if (!apiKey) {
-    res.status(500).json({
-      error:
-        'GEMINI_API_KEY is missing. Please add GEMINI_API_KEY to your .env file (or your hosting platform\'s Environment Variables). You can get a free API key at https://aistudio.google.com/app/apikey',
-    });
-    return;
-  }
-
   const {
     messages,
     modelId = 'gemini-3.8-flash',
+    apiKey: userKey = '',
     systemInstruction = '',
     customInstructions = '',
     webSearch = false,
   } = req.body;
+
+  if (!userKey) {
+    res.status(400).json({
+      error:
+        'No API key provided. Open Settings → API key and paste your OpenRouter key (get one at https://openrouter.ai/keys).',
+    });
+    return;
+  }
 
   if (!Array.isArray(messages) || messages.length === 0) {
     res.status(400).json({ error: 'Messages array is required' });
@@ -350,9 +373,9 @@ Format code with markdown triple-backticks with syntax identifiers.
 When asked mathematical problems or reasoning, provide structured, clear explanations.
 Tone should be polite, authentic, knowledgeable, and responsive.`;
 
-    if (modelId === 'gemini-3.8-flash-coder') {
+    if (modelId === 'gemini-3.8-flash-coder' || modelId === 'gemini-3.6-flash-coder') {
       combinedSystem += `\nYou are operating in Code Architect Mode. Focus on high quality, production-ready, clean, well-documented code with unit tests, best practices, and concise technical explanations.`;
-    } else if (modelId === 'gemini-3.8-flash-creative') {
+    } else if (modelId === 'gemini-3.8-flash-creative' || modelId === 'gemini-3.6-flash-creative') {
       combinedSystem += `\nYou are operating in Creative & Prose Mode. Emphasize vivid descriptions, nuanced tone, captivating narrative voice, and thoughtful style.`;
     }
 
@@ -375,84 +398,98 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
       return;
     }
 
-    const contents = validMessages.map((msg: any) => {
-      const parts: any[] = [];
+    // Build OpenAI-compatible messages (system + turns). Images become image_url parts.
+    const chatMessages: any[] = [{ role: 'system', content: combinedSystem }];
+
+    for (const msg of validMessages) {
+      const role = msg.role === 'assistant' || msg.role === 'model' ? 'assistant' : 'user';
 
       if (msg.image && msg.image.data && msg.image.mimeType) {
         let rawBase64 = msg.image.data;
         if (rawBase64.includes('base64,')) {
           rawBase64 = rawBase64.split('base64,')[1];
         }
-        parts.push({
-          inlineData: {
-            mimeType: msg.image.mimeType,
-            data: rawBase64,
-          },
-        });
+        const dataUrl = `data:${msg.image.mimeType};base64,${rawBase64}`;
+        const parts: any[] = [{ type: 'image_url', image_url: { url: dataUrl } }];
+        if (msg.content) {
+          parts.push({ type: 'text', text: String(msg.content) });
+        }
+        chatMessages.push({ role, content: parts });
+      } else {
+        chatMessages.push({ role, content: String(msg.content || '') });
       }
-
-      if (msg.content) {
-        parts.push({
-          text: String(msg.content),
-        });
-      }
-
-      return {
-        role: msg.role === 'assistant' || msg.role === 'model' ? 'model' : 'user',
-        parts,
-      };
-    });
-
-    // Ensure contents ends with a user turn as required by Gemini API
-    while (contents.length > 0 && contents[contents.length - 1].role === 'model') {
-      contents.pop();
     }
 
-    if (contents.length === 0) {
+    // Ensure the conversation ends with a user turn.
+    while (chatMessages.length > 1 && chatMessages[chatMessages.length - 1].role === 'assistant') {
+      chatMessages.pop();
+    }
+    if (chatMessages.length <= 1) {
       res.status(400).json({ error: 'Request must end with a user turn.' });
       return;
     }
 
-    const tools: any[] = [];
-    if (webSearch) {
-      tools.push({ googleSearch: {} });
+    let model = MODEL_MAP[modelId] || OPENROUTER_MODEL;
+    // OpenRouter enables web search via the ":online" model suffix.
+    if (webSearch && !model.endsWith(':online')) {
+      model = `${model}:online`;
     }
 
-    const config: any = {
-      systemInstruction: combinedSystem,
-    };
+    const upstream = await fetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${userKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: chatMessages,
+        stream: true,
+      }),
+    });
 
-    if (tools.length > 0) {
-      config.tools = tools;
+    if (!upstream.ok || !upstream.body) {
+      let errorMsg = `OpenRouter responded with status ${upstream.status}`;
+      try {
+        const data = await upstream.json();
+        errorMsg = data?.error?.message || data?.error || errorMsg;
+      } catch {}
+      res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+      res.write(`data: [DONE]\n\n`);
+      res.end();
+      return;
     }
 
-    const targetModel =
-      modelId === 'gemini-3.5-flash' || modelId === 'gemini-3.8-flash-thinking'
-        ? 'gemini-3.5-flash'
-        : 'gemini-3.6-flash';
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    let responseStream;
-    try {
-      responseStream = await ai.models.generateContentStream({
-        model: targetModel,
-        contents,
-        config,
-      });
-    } catch (modelErr: any) {
-      console.warn(`Model ${targetModel} error, attempting fallback to gemini-3.5-flash:`, modelErr?.message);
-      responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3.5-flash',
-        contents,
-        config,
-      });
-    }
-
-    for await (const chunk of responseStream) {
+    while (true) {
       if (isAborted) break;
+      const { value, done } = await reader.read();
+      if (done) break;
 
-      const chunkText = chunk.text || '';
-      if (chunkText) {
-        res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const payload = trimmed.replace(/^data:\s*/, '');
+        if (payload === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(payload);
+          const delta = parsed?.choices?.[0]?.delta?.content || '';
+          if (delta) {
+            res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
+          }
+          if (parsed?.error) {
+            res.write(`data: ${JSON.stringify({ error: parsed.error.message || 'Stream error.' })}\n\n`);
+          }
+        } catch {
+          // Ignore non-JSON keepalive lines.
+        }
       }
     }
 

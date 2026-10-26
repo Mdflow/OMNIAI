@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   customInstructions: '',
   webSearchDefault: false,
   systemTone: 'balanced',
+  apiKey: '',
 };
 
 export default function App() {
@@ -312,6 +313,7 @@ export default function App() {
         body: JSON.stringify({
           messages: cleanMessages,
           modelId,
+          apiKey: settings.apiKey,
           customInstructions: settings.customInstructions,
           webSearch,
           tone: settings.systemTone,

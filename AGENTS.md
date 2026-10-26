@@ -27,10 +27,13 @@ docker compose -f docker-compose.base44.yml up -d
 
 ## Credentials
 
-- `GEMINI_API_KEY` (Google AI Studio, https://aistudio.google.com/app/apikey) is the only external
-  credential. It is **not** required to boot — `GoogleGenAI` only warns with an empty key — but
-  every chat reply fails with a clear "GEMINI_API_KEY is missing" message until it is set. It is
-  delivered through the platform secrets file and wired via `env_file` (last, so it wins).
+- There is **no server-side API key**. The AI provider key is supplied by the user in the app
+  (Settings → API key), stored in `localStorage` (`omnichat_settings.apiKey`), and sent with each
+  chat request. The server proxies it to the OpenRouter OpenAI-compatible endpoint
+  (`https://openrouter.ai/api/v1/chat/completions`). Any OpenRouter key works; the previous
+  `GEMINI_API_KEY` server secret is no longer used and can be removed from the secrets dashboard.
+- `/api/key-status` (POST `{ apiKey }`) validates the entered key with a 1-token OpenRouter call
+  and reports `configured` / `valid` / `keyPreview` / `error` for the Settings panel.
 
 ## Verifying a change
 

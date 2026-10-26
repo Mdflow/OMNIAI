@@ -2,11 +2,5 @@
   "previewPort": 3000,
   "healthPath": "/",
   "startCommand": "docker compose -f docker-compose.base44.yml up -d",
-  "secrets": [
-    {
-      "name": "GEMINI_API_KEY",
-      "description": "Google Gemini API key powering the AI chat (/api/chat/stream). The app starts without it, but every chat reply fails until it is set. Free key from https://aistudio.google.com/app/apikey.",
-      "requiredAtBoot": false
-    }
-  ]
+  "secrets": []
 }

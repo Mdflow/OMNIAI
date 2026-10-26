@@ -24,11 +24,9 @@ services:
       - PORT=3000
       - BASE44_PREVIEW_MODE
       - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
-    # Platform-managed secrets (GEMINI_API_KEY). Listed last so a value uploaded in the
-    # secrets dashboard always wins. The app boots without it; the AI chat then answers with
-    # its own "GEMINI_API_KEY is missing" message.
-    env_file:
-      - /run/base44/app.env
+    # No server-side API key is needed: the AI key is supplied by the user in the app
+    # (Settings → API key) and sent with each chat request. The server proxies it to the
+    # OpenAI-compatible provider.
     # Dependencies come from the same checkout: install from the committed bun.lock at startup
     # (node_modules lives on the bind mount), then run the repo's own dev script.
     command: ["sh", "-ec", "bun install --frozen-lockfile && exec bun run dev"]
