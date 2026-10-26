@@ -225,7 +225,6 @@ ${pageContext}`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [{ role: 'user', content: question }],
-          modelId: 'gemini-3.6-flash',
           systemInstruction: systemPrompt,
         }),
       });

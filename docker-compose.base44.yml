@@ -19,7 +19,7 @@ services:
     command:
       - sh
       - -ec
-      - bun install --frozen-lockfile && exec node_modules/.bin/tsx server.ts
+      - bun install --frozen-lockfile && exec node_modules/.bin/tsx watch server.ts
     ports:
       - "3000:3000"
     volumes:

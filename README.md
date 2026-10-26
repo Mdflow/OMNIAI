@@ -6,12 +6,16 @@ A conversational AI web application inspired by ChatGPT with real-time streaming
 
 ## 🔑 API Key Configuration
 
-When you clone or deploy this project outside of Google AI Studio, you need to provide your own **Gemini API Key**.
+The app talks to any provider that exposes an **OpenAI-compatible chat completions API** — OpenAI, OpenRouter, Groq, Together, DeepSeek, xAI, Mistral, a local Ollama / LM Studio server, or Google's own OpenAI-compatible endpoint. You supply one key plus, optionally, the provider's base URL and model.
 
-### 1. Get a Free Gemini API Key
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
-2. Sign in with your Google account.
-3. Click **Create API Key** and copy your key.
+### 1. Get an API Key
+
+Sign up with any OpenAI-compatible provider and copy its key, for example:
+
+* **OpenAI** — [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+* **OpenRouter** (a single key usable with hundreds of models) — [openrouter.ai/keys](https://openrouter.ai/keys)
+* **Groq** — [console.groq.com/keys](https://console.groq.com/keys)
+* **Google Gemini** (through its OpenAI-compatible API) — [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
 
 ---
 
@@ -29,12 +33,23 @@ When you clone or deploy this project outside of Google AI Studio, you need to p
    cp .env.example .env
    ```
 
-3. **Add your Gemini API Key:**
+3. **Add your provider settings:**
    Open the `.env` file in your code editor and set:
    ```env
-   GEMINI_API_KEY=your_actual_gemini_api_key_here
+   AI_API_KEY=your_provider_api_key_here
+   # Optional — these are the defaults:
+   AI_BASE_URL=https://api.openai.com/v1
+   AI_MODEL=gpt-4o-mini
+   # Optional — extra models offered in the app's model picker:
+   AI_MODELS=openai/gpt-4o-mini,openai/gpt-4o
    PORT=3000
    ```
+   Common base URLs:
+   * OpenAI — `https://api.openai.com/v1`
+   * OpenRouter — `https://openrouter.ai/api/v1`
+   * Groq — `https://api.groq.com/openai/v1`
+   * Google Gemini — `https://generativelanguage.googleapis.com/v1beta/openai`
+   * Local Ollama — `http://localhost:11434/v1`
 
 4. **Install dependencies and start the app:**
    ```bash
@@ -60,8 +75,8 @@ This project includes pre-configured **`netlify.toml`** and serverless function 
    * **Publish directory:** `dist`
    * **Functions directory:** `netlify/functions`
 6. Click **"Environment variables"** (or go to **Site configuration > Environment variables**) and add:
-   * **Key:** `GEMINI_API_KEY`
-   * **Value:** *(paste your Gemini API key from https://aistudio.google.com/app/apikey)*
+   * **Key:** `AI_API_KEY` — **Value:** *(your provider API key)*
+   * Add `AI_BASE_URL` and `AI_MODEL` as well if you are not using the OpenAI defaults.
 7. Click **"Deploy site"**.
 8. Once deployed, Netlify assigns you a free URL like:
    `https://random-name-123.netlify.app`
@@ -80,14 +95,14 @@ If you prefer other platforms:
   2. In your **Base44** or hosting dashboard, connect your GitHub account and import this repository.
   3. Set the **Build Command** to `npm run build` and **Start Command** to `npm start`.
   4. In **Environment Variables**, set:
-     * **Key:** `GEMINI_API_KEY`
-     * **Value:** *(your Gemini API key from https://aistudio.google.com/app/apikey)*
+     * **Key:** `AI_API_KEY` — **Value:** *(your provider API key)*
+     * Plus `AI_BASE_URL` / `AI_MODEL` when not using OpenAI.
   5. Deploy and attach your Base44 custom domain or default project URL!
 
 * **Google Cloud Run / Docker**:
-  Set the environment variable when deploying:
+  Set the environment variables when deploying:
   ```bash
-  --set-env-vars GEMINI_API_KEY="your_api_key_here"
+  --set-env-vars AI_API_KEY="your_api_key_here",AI_BASE_URL="https://api.openai.com/v1",AI_MODEL="gpt-4o-mini"
   ```
 
 ---
@@ -95,17 +110,13 @@ If you prefer other platforms:
 ## 🚀 Features
 
 * **Real-Time Token Streaming**: High-speed conversational responses via Server-Sent Events (SSE).
-* **Multiple Model Personas**:
-  * **GPT-4o (Omni)**: Everyday versatile intelligence and multimodal vision.
-  * **o1 Reasoning**: Step-by-step logic and mathematical thinking.
-  * **Code Architect**: Clean code generation, refactoring, and debugging.
-  * **Creative & Prose**: Storytelling, marketing copy, and dialogue.
+* **Bring Your Own Model**: The model picker lists whatever you configure through `AI_MODEL` / `AI_MODELS`, served by any OpenAI-compatible provider.
 * **In-App Web Browser**:
   * Enter any website link and browse seamlessly without leaving the site.
   * Server proxy strips `X-Frame-Options` and CSP framing blocks.
   * Reader mode for clean article extraction.
   * Side-by-side AI page companion to summarize and answer questions about any webpage.
-* **Multimodal Image Support**: Attach photos, diagrams, or screenshots for analysis.
+* **Multimodal Image Support**: Attach photos, diagrams, or screenshots for analysis (with vision-capable models).
 * **Chat Management**: Grouped chat history (Today, Yesterday, 7 Days), search, renaming, pinning, and local persistence.
 * **Export & Sharing**: Export chats to Markdown (`.md`) or JSON (`.json`), or copy formatted text.
 * **Voice Capabilities**: Speech-to-text dictation and text-to-speech read aloud.

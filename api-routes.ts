@@ -1,6 +1,5 @@
 import express, { Router } from 'express';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
 import * as cheerio from 'cheerio';
 
 dotenv.config();
@@ -8,16 +7,26 @@ dotenv.config();
 const router = Router();
 router.use(express.json({ limit: '25mb' }));
 
-// Initialize GoogleGenAI server-side with telemetry User-Agent
-const apiKey = process.env.GEMINI_API_KEY || '';
-const ai = new GoogleGenAI({
-  apiKey,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
+// Provider-agnostic AI configuration. Any service that speaks the OpenAI-compatible
+// chat completions API works here: OpenAI, OpenRouter, Groq, Together, DeepSeek, xAI,
+// Mistral, Ollama/LM Studio, Google's OpenAI-compatible endpoint, and so on.
+const AI_API_KEY = process.env.AI_API_KEY || '';
+const AI_BASE_URL = (process.env.AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+const AI_DEFAULT_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
+
+// Models offered in the UI: the default model first, then anything listed in AI_MODELS.
+const AI_MODELS = [
+  ...new Set([
+    AI_DEFAULT_MODEL,
+    ...(process.env.AI_MODELS || '')
+      .split(',')
+      .map((model) => model.trim())
+      .filter(Boolean),
+  ]),
+];
+
+const resolveModel = (requested?: string) =>
+  requested && AI_MODELS.includes(requested) ? requested : AI_DEFAULT_MODEL;
 
 // Helper to handle both /api/* and direct /* routing
 const routes = [
@@ -29,7 +38,8 @@ const routes = [
 router.get(routes, (_req, res) => {
   res.json({
     status: 'ok',
-    hasApiKey: Boolean(apiKey && apiKey.length > 0),
+    hasApiKey: Boolean(AI_API_KEY),
+    model: AI_DEFAULT_MODEL,
     timestamp: new Date().toISOString(),
   });
 });
@@ -42,40 +52,14 @@ const modelRoutes = [
 
 router.get(modelRoutes, (_req, res) => {
   res.json({
-    models: [
-      {
-        id: 'gemini-3.6-flash',
-        displayName: 'GPT-4o (Gemini 3.6 Flash)',
-        description: 'Ultra-fast, responsive intelligence for text, coding, and vision analysis.',
-        badge: 'Recommended ⚡',
-        contextLimit: '128k',
-        supportsVision: true,
-      },
-      {
-        id: 'gemini-3.5-flash',
-        displayName: 'o1 Reasoning (Deep Think)',
-        description: 'Advanced reasoning and step-by-step logic for complex math and problems.',
-        badge: 'Reasoning',
-        contextLimit: '128k',
-        supportsVision: true,
-      },
-      {
-        id: 'gemini-3.6-flash-creative',
-        displayName: 'Creative & Prose Mode',
-        description: 'Optimized for storytelling, engaging dialogue, and creative writing.',
-        badge: 'Creative',
-        contextLimit: '128k',
-        supportsVision: true,
-      },
-      {
-        id: 'gemini-3.6-flash-coder',
-        displayName: 'Code Architect Mode',
-        description: 'Specialized for writing clean code, refactoring, and debugging.',
-        badge: 'Coding',
-        contextLimit: '128k',
-        supportsVision: true,
-      },
-    ],
+    models: AI_MODELS.map((id, index) => ({
+      id,
+      displayName: id,
+      description: '',
+      badge: index === 0 ? 'Default' : '',
+      contextLimit: '',
+      supportsVision: true,
+    })),
   });
 });
 
@@ -276,20 +260,19 @@ const chatStreamRoutes = [
 ];
 
 router.post(chatStreamRoutes, async (req, res) => {
-  if (!apiKey) {
+  if (!AI_API_KEY) {
     res.status(500).json({
       error:
-        'GEMINI_API_KEY is missing. Please add GEMINI_API_KEY to your .env file (or your hosting platform\'s Environment Variables). You can get a free API key at https://aistudio.google.com/app/apikey',
+        'AI_API_KEY is missing. Add the API key of any OpenAI-compatible AI provider in Secrets, and set AI_BASE_URL / AI_MODEL if you are not using the OpenAI defaults.',
     });
     return;
   }
 
   const {
     messages,
-    modelId = 'gemini-3.8-flash',
+    modelId,
     systemInstruction = '',
     customInstructions = '',
-    webSearch = false,
   } = req.body;
 
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -320,12 +303,6 @@ Format code with markdown triple-backticks with syntax identifiers.
 When asked mathematical problems or reasoning, provide structured, clear explanations.
 Tone should be polite, authentic, knowledgeable, and responsive.`;
 
-    if (modelId === 'gemini-3.8-flash-coder') {
-      combinedSystem += `\nYou are operating in Code Architect Mode. Focus on high quality, production-ready, clean, well-documented code with unit tests, best practices, and concise technical explanations.`;
-    } else if (modelId === 'gemini-3.8-flash-creative') {
-      combinedSystem += `\nYou are operating in Creative & Prose Mode. Emphasize vivid descriptions, nuanced tone, captivating narrative voice, and thoughtful style.`;
-    }
-
     if (systemInstruction) {
       combinedSystem += `\n\nSpecific task guidance: ${systemInstruction}`;
     }
@@ -345,84 +322,99 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
       return;
     }
 
-    const contents = validMessages.map((msg: any) => {
+    const providerMessages = validMessages.map((msg: any) => {
+      const role = msg.role === 'assistant' || msg.role === 'model' ? 'assistant' : 'user';
+      const hasImage = Boolean(msg.image && msg.image.data && msg.image.mimeType);
+
+      if (!hasImage) {
+        return { role, content: String(msg.content ?? '') };
+      }
+
       const parts: any[] = [];
-
-      if (msg.image && msg.image.data && msg.image.mimeType) {
-        let rawBase64 = msg.image.data;
-        if (rawBase64.includes('base64,')) {
-          rawBase64 = rawBase64.split('base64,')[1];
-        }
-        parts.push({
-          inlineData: {
-            mimeType: msg.image.mimeType,
-            data: rawBase64,
-          },
-        });
-      }
-
       if (msg.content) {
-        parts.push({
-          text: String(msg.content),
-        });
+        parts.push({ type: 'text', text: String(msg.content) });
       }
+      parts.push({
+        type: 'image_url',
+        image_url: {
+          url: String(msg.image.data).includes('base64,')
+            ? String(msg.image.data)
+            : `data:${msg.image.mimeType};base64,${msg.image.data}`,
+        },
+      });
 
-      return {
-        role: msg.role === 'assistant' || msg.role === 'model' ? 'model' : 'user',
-        parts,
-      };
+      return { role, content: parts };
     });
 
-    // Ensure contents ends with a user turn as required by Gemini API
-    while (contents.length > 0 && contents[contents.length - 1].role === 'model') {
-      contents.pop();
+    // Providers expect the conversation to end with a user turn.
+    while (providerMessages.length > 0 && providerMessages[providerMessages.length - 1].role === 'assistant') {
+      providerMessages.pop();
     }
 
-    if (contents.length === 0) {
-      res.status(400).json({ error: 'Request must end with a user turn.' });
+    if (providerMessages.length === 0) {
+      res.write(`data: ${JSON.stringify({ error: 'Request must end with a user turn.' })}\n\n`);
+      res.write(`data: [DONE]\n\n`);
+      res.end();
       return;
     }
 
-    const tools: any[] = [];
-    if (webSearch) {
-      tools.push({ googleSearch: {} });
+    const upstream = await fetch(`${AI_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        Authorization: `Bearer ${AI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: resolveModel(modelId),
+        stream: true,
+        messages: [{ role: 'system', content: combinedSystem }, ...providerMessages],
+      }),
+    });
+
+    if (!upstream.ok || !upstream.body) {
+      const raw = await upstream.text().catch(() => '');
+      let detail = raw;
+      try {
+        const body = JSON.parse(raw);
+        detail = body?.error?.message || body?.message || raw;
+      } catch {
+        // Not JSON — keep the raw body.
+      }
+      throw new Error(`${upstream.status} ${upstream.statusText}${detail ? ` — ${detail}` : ''}`.trim());
     }
 
-    const config: any = {
-      systemInstruction: combinedSystem,
-    };
+    const reader = upstream.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    if (tools.length > 0) {
-      config.tools = tools;
-    }
+    while (!isAborted) {
+      const { value, done } = await reader.read();
+      if (done) break;
 
-    const targetModel =
-      modelId === 'gemini-3.5-flash' || modelId === 'gemini-3.8-flash-thinking'
-        ? 'gemini-3.5-flash'
-        : 'gemini-3.6-flash';
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
 
-    let responseStream;
-    try {
-      responseStream = await ai.models.generateContentStream({
-        model: targetModel,
-        contents,
-        config,
-      });
-    } catch (modelErr: any) {
-      console.warn(`Model ${targetModel} error, attempting fallback to gemini-3.5-flash:`, modelErr?.message);
-      responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3.5-flash',
-        contents,
-        config,
-      });
-    }
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
 
-    for await (const chunk of responseStream) {
-      if (isAborted) break;
+        const payload = trimmed.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
 
-      const chunkText = chunk.text || '';
-      if (chunkText) {
-        res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+        try {
+          const chunk = JSON.parse(payload);
+          const delta = chunk?.choices?.[0]?.delta?.content;
+          const text = Array.isArray(delta)
+            ? delta.map((part: any) => part?.text || '').join('')
+            : delta;
+          if (text && !isAborted) {
+            res.write(`data: ${JSON.stringify({ text })}\n\n`);
+          }
+        } catch {
+          // Ignore partial or non-JSON frames.
+        }
       }
     }
 
@@ -433,17 +425,7 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
   } catch (error: any) {
     console.error('Error during streaming:', error);
     if (!isAborted) {
-      // The SDK wraps the upstream error body twice, which renders unreadably in the UI.
-      // Unwrap the envelope so the client can show the actual reason (e.g. an invalid API key).
-      let errorMsg = String(error?.message || '').trim();
-      try {
-        const body = JSON.parse(errorMsg);
-        const upstream = typeof body?.error?.message === 'string' ? JSON.parse(body.error.message) : body;
-        errorMsg = upstream?.error?.message || body?.error?.message || errorMsg;
-      } catch {
-        // Not a JSON envelope — keep the original message.
-      }
-      errorMsg = errorMsg || 'An error occurred while generating the response.';
+      const errorMsg = error?.message || 'An error occurred while generating the response.';
       res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
       res.write(`data: [DONE]\n\n`);
       res.end();

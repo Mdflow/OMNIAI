@@ -68,7 +68,8 @@ export default function App() {
   });
 
   // Selected Model ID
-  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3.6-flash');
+  // Empty means "use the model configured on the server".
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
 
   // Input & Streaming State
   const [input, setInput] = useState('');

@@ -3,9 +3,6 @@ import {
   Menu,
   ChevronDown,
   Sparkles,
-  Brain,
-  Feather,
-  Code2,
   Plus,
   Share2,
   Settings,
@@ -28,41 +25,6 @@ interface ChatHeaderProps {
   onSwitchView: (view: AppView) => void;
 }
 
-const MODELS: ModelOption[] = [
-  {
-    id: 'gemini-3.6-flash',
-    displayName: 'GPT-4o (Omni)',
-    description: 'Our most responsive model for lightning-fast text, multimodal vision, and rapid answers.',
-    badge: 'Fastest ⚡',
-    contextLimit: '128k',
-    supportsVision: true,
-  },
-  {
-    id: 'gemini-3.5-flash',
-    displayName: 'o1 Reasoning',
-    description: 'Thinks deeply before responding. Excels at math, coding challenges, and complex logic.',
-    badge: 'Reasoning',
-    contextLimit: '128k',
-    supportsVision: true,
-  },
-  {
-    id: 'gemini-3.6-flash-coder',
-    displayName: 'Code Architect',
-    description: 'Specialized for software engineering, architecture reviews, debugging, and scripts.',
-    badge: 'Dev',
-    contextLimit: '128k',
-    supportsVision: true,
-  },
-  {
-    id: 'gemini-3.6-flash-creative',
-    displayName: 'Creative & Prose',
-    description: 'Fine-tuned tone for creative writing, engaging narratives, marketing copy, and dialogue.',
-    badge: 'Creative',
-    contextLimit: '128k',
-    supportsVision: true,
-  },
-];
-
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
   isSidebarOpen,
   onToggleSidebar,
@@ -76,9 +38,34 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onSwitchView,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [models, setModels] = useState<ModelOption[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentModel = MODELS.find((m) => m.id === selectedModelId) || MODELS[0];
+  // The available models come from the server, which reads them from AI_MODEL / AI_MODELS.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/models')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.models)) {
+          setModels(data.models);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const currentModel =
+    models.find((m) => m.id === selectedModelId) ||
+    models[0] || {
+      id: '',
+      displayName: 'AI model',
+      description: '',
+      contextLimit: '',
+      supportsVision: true,
+    };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -90,18 +77,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getModelIcon = (id: string) => {
-    switch (id) {
-      case 'gemini-3.8-flash-thinking':
-        return <Brain className="w-4 h-4 text-purple-400" />;
-      case 'gemini-3.8-flash-coder':
-        return <Code2 className="w-4 h-4 text-blue-400" />;
-      case 'gemini-3.8-flash-creative':
-        return <Feather className="w-4 h-4 text-amber-400" />;
-      default:
-        return <Sparkles className="w-4 h-4 text-emerald-400" />;
-    }
-  };
+  const getModelIcon = () => <Sparkles className="w-4 h-4 text-emerald-400" />;
 
   return (
     <header
@@ -155,10 +131,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
               }`}
             >
               <div className="px-3 py-1.5 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Model Architecture
+                Model
               </div>
               <div className="space-y-1">
-                {MODELS.map((model) => {
+                {models.length === 0 && (
+                  <div className="px-3 py-2 text-[11px] text-zinc-400">Loading models…</div>
+                )}
+                {models.map((model) => {
                   const isSelected = model.id === currentModel.id;
                   return (
                     <button
@@ -178,7 +157,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                       }`}
                     >
                       <div className="mt-0.5 p-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700/50">
-                        {getModelIcon(model.id)}
+                        {getModelIcon()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -189,9 +168,11 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-snug">
-                          {model.description}
-                        </p>
+                        {model.description && (
+                          <p className="text-[11px] text-zinc-400 line-clamp-2 mt-0.5 leading-snug">
+                            {model.description}
+                          </p>
+                        )}
                       </div>
                       {isSelected && (
                         <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-1" />
@@ -205,7 +186,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                 <span className="flex items-center gap-1">
                   <Zap className="w-3 h-3 text-amber-400" /> Real-time token streaming
                 </span>
-                <span>Context: 128k</span>
+                <span>OpenAI-compatible</span>
               </div>
             </div>
           )}

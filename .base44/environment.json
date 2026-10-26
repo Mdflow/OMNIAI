@@ -4,8 +4,18 @@
   "startCommand": "docker compose -f docker-compose.base44.yml up -d",
   "secrets": [
     {
-      "name": "GEMINI_API_KEY",
-      "description": "Google Gemini API key used by the /api/chat/stream endpoint. Get a free key at https://aistudio.google.com/app/apikey. The app boots without it (/health reports hasApiKey: false) but chat requests fail with a 500 until it is set.",
+      "name": "AI_API_KEY",
+      "description": "API key for any OpenAI-compatible AI provider (OpenAI, OpenRouter, Groq, Together, DeepSeek, xAI, Mistral, Ollama/LM Studio, Google's OpenAI-compatible endpoint, ...). The app runs without it, but chat replies fail with a clear message until it is set.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "AI_BASE_URL",
+      "description": "Optional. Base URL of the provider's OpenAI-compatible API. Defaults to https://api.openai.com/v1. Examples: https://openrouter.ai/api/v1, https://api.groq.com/openai/v1, https://generativelanguage.googleapis.com/v1beta/openai",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "AI_MODEL",
+      "description": "Optional. Default model id sent to the provider. Defaults to gpt-4o-mini. Examples: openai/gpt-4o-mini (OpenRouter), llama-3.3-70b-versatile (Groq), gemini-2.5-flash (Google OpenAI-compatible endpoint).",
       "requiredAtBoot": false
     }
   ]
