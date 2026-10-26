@@ -1,0 +1,46 @@
+# Base44 dev environment for OmniChat (Vite + React SPA served by Express via `tsx server.ts`).
+#
+# One service: the Express server hosts both the API routes (/api/*) and the Vite dev
+# middleware, so a single origin on host port 3000 serves everything. The repo source is
+# bind-mounted and the app runs from source with live reload, so editor changes appear in
+# the preview without rebuilding an image.
+services:
+  web:
+    image: oven/bun:1
+    working_dir: /app
+    labels:
+      base44.project: "OmniChat"
+      base44.kind: "web"
+      base44.port: "3000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+    # BASE44_PREVIEW_MODE is supplied by the sandbox and only passed through.
+    # __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS must be forwarded to the container: Vite's dev
+    # server rejects the preview proxy's Host header (403 on the page, while /api/* still
+    # works) unless it is allowed. Vite >= 6.1 appends this variable to allowedHosts.
+    environment:
+      - PORT=3000
+      - BASE44_PREVIEW_MODE
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
+    # Platform-managed secrets (GEMINI_API_KEY). Listed last so a value uploaded in the
+    # secrets dashboard always wins. The app boots without it; the AI chat then answers with
+    # its own "GEMINI_API_KEY is missing" message.
+    env_file:
+      - /run/base44/app.env
+    # Dependencies come from the same checkout: install from the committed bun.lock at startup
+    # (node_modules lives on the bind mount), then run the repo's own dev script.
+    command: ["sh", "-ec", "bun install --frozen-lockfile && exec bun run dev"]
+    restart: on-failure
+    # Probes the running app itself: the API (/api/health) and the web UI (/), and reports
+    # which one failed.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          bun -e "const hit=async(u)=>{try{const r=await fetch(u);return r.ok}catch{return false}};(async()=>{const api=await hit('http://127.0.0.1:3000/api/health');const ui=await hit('http://127.0.0.1:3000/');if(!api)console.error('healthcheck failed: API /api/health not responding');if(!ui)console.error('healthcheck failed: web UI / not responding');process.exit(api&&ui?0:1)})()"
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 90s
