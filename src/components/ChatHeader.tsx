@@ -30,23 +30,23 @@ interface ChatHeaderProps {
 
 const MODELS: ModelOption[] = [
   {
-    id: 'gemini-3.8-flash',
+    id: 'gemini-3.6-flash',
     displayName: 'GPT-4o (Omni)',
-    description: 'Our most capable and versatile model for text, multimodal reasoning, and rapid answers.',
-    badge: 'Popular',
+    description: 'Our most responsive model for lightning-fast text, multimodal vision, and rapid answers.',
+    badge: 'Fastest ⚡',
     contextLimit: '128k',
     supportsVision: true,
   },
   {
-    id: 'gemini-3.8-flash-thinking',
+    id: 'gemini-3.5-flash',
     displayName: 'o1 Reasoning',
     description: 'Thinks deeply before responding. Excels at math, coding challenges, and complex logic.',
-    badge: 'Thinking',
+    badge: 'Reasoning',
     contextLimit: '128k',
     supportsVision: true,
   },
   {
-    id: 'gemini-3.8-flash-coder',
+    id: 'gemini-3.6-flash-coder',
     displayName: 'Code Architect',
     description: 'Specialized for software engineering, architecture reviews, debugging, and scripts.',
     badge: 'Dev',
@@ -54,7 +54,7 @@ const MODELS: ModelOption[] = [
     supportsVision: true,
   },
   {
-    id: 'gemini-3.8-flash-creative',
+    id: 'gemini-3.6-flash-creative',
     displayName: 'Creative & Prose',
     description: 'Fine-tuned tone for creative writing, engaging narratives, marketing copy, and dialogue.',
     badge: 'Creative',

@@ -68,7 +68,7 @@ export default function App() {
   });
 
   // Selected Model ID
-  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3.8-flash');
+  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-3.6-flash');
 
   // Input & Streaming State
   const [input, setInput] = useState('');
@@ -300,12 +300,17 @@ export default function App() {
     abortControllerRef.current = controller;
 
     try {
+      // Clean messages array (remove any empty placeholders)
+      const cleanMessages = conv.messages.filter(
+        (m) => (m.content && m.content.trim().length > 0) || (m.image && m.image.data)
+      );
+
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          messages: conv.messages,
+          messages: cleanMessages,
           modelId,
           customInstructions: settings.customInstructions,
           webSearch,

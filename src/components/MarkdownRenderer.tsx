@@ -26,7 +26,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isD
             return (
               <code
                 className={`px-1.5 py-0.5 rounded text-[13px] font-mono ${
-                  isDark ? 'bg-zinc-800 text-emerald-400' : 'bg-zinc-200 text-emerald-700'
+                  isDark ? 'bg-zinc-800 text-zinc-200 border border-zinc-700/60' : 'bg-zinc-200 text-zinc-900 border border-zinc-300'
                 }`}
                 {...props}
               >
@@ -95,7 +95,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isD
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-emerald-500 hover:text-emerald-400 underline underline-offset-2 transition-colors"
+                className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
               >
                 {children}
               </a>

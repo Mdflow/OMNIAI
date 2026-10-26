@@ -75,10 +75,14 @@ This project includes pre-configured **`netlify.toml`** and serverless function 
 
 If you prefer other platforms:
 
-* **Vercel / Render / Railway**:
-  1. Import the GitHub repository.
-  2. In **Environment Variables**, set `GEMINI_API_KEY`.
-  3. Deploy!
+* **Base44 / Vercel / Render / Railway**:
+  1. Export / Push your repository to **GitHub**.
+  2. In your **Base44** or hosting dashboard, connect your GitHub account and import this repository.
+  3. Set the **Build Command** to `npm run build` and **Start Command** to `npm start`.
+  4. In **Environment Variables**, set:
+     * **Key:** `GEMINI_API_KEY`
+     * **Value:** *(your Gemini API key from https://aistudio.google.com/app/apikey)*
+  5. Deploy and attach your Base44 custom domain or default project URL!
 
 * **Google Cloud Run / Docker**:
   Set the environment variable when deploying:

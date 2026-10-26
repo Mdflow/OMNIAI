@@ -83,12 +83,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
         {/* Avatar */}
         <div className="shrink-0 pt-0.5">
           {isUser ? (
-            <div className="w-8 h-8 rounded-full bg-linear-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-xs font-bold text-white shadow-xs">
+            <div className="w-8 h-8 rounded-full bg-linear-to-tr from-zinc-700 to-zinc-800 flex items-center justify-center text-xs font-bold text-white shadow-xs ring-1 ring-zinc-700">
               U
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white shadow-xs ring-1 ring-emerald-500/30">
-              <Sparkles className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-100 shadow-xs">
+              <Sparkles className="w-4 h-4 text-zinc-200" />
             </div>
           )}
         </div>
@@ -123,15 +123,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({
                 onChange={(e) => setEditedText(e.target.value)}
                 className={`w-full p-2.5 rounded-xl text-sm border focus:outline-hidden ${
                   isDark
-                    ? 'bg-zinc-800 border-zinc-700 text-zinc-100 ring-1 ring-emerald-500/50'
-                    : 'bg-white border-zinc-300 text-zinc-900 ring-1 ring-emerald-500/50'
+                    ? 'bg-zinc-800 border-zinc-700 text-zinc-100 ring-1 ring-zinc-600'
+                    : 'bg-white border-zinc-300 text-zinc-900 ring-1 ring-zinc-400'
                 }`}
                 rows={3}
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveEdit}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-500"
+                  className="px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-900 font-medium text-xs hover:bg-zinc-200"
                 >
                   Save & Submit
                 </button>
@@ -151,7 +151,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             <div>
               <MarkdownRenderer content={message.content} isDark={isDark} />
               {isStreamingThis && (
-                <span className="inline-block w-2 h-4.5 bg-emerald-400 animate-pulse ml-1 align-middle rounded-xs" />
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-zinc-300 dark:bg-zinc-100 animate-pulse ml-1.5 align-middle" />
               )}
             </div>
           )}
