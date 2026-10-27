@@ -48,4 +48,4 @@ export interface ExtractedWebPage {
   wordCount: number;
 }
 
-export type AppView = 'chat' | 'browser';
+export type AppView = 'landing' | 'chat' | 'browser';
