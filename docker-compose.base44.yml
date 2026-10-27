@@ -24,9 +24,11 @@ services:
       - PORT=3000
       - BASE44_PREVIEW_MODE
       - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
-    # No server-side API key is needed: the AI key is supplied by the user in the app
-    # (Settings → API key) and sent with each chat request. The server proxies it to the
-    # OpenAI-compatible provider.
+    # The OpenRouter API key is a server-side secret (OPENROUTER_API_KEY), shared across all
+    # visitors. It is delivered by the platform to /run/base44/app.env and loaded via env_file
+    # below; it never lives in the repo or reaches the client.
+    env_file:
+      - /run/base44/app.env
     # Dependencies come from the same checkout: install from the committed bun.lock at startup
     # (node_modules lives on the bind mount), then run the repo's own dev script.
     command: ["sh", "-ec", "bun install --frozen-lockfile && exec bun run dev"]

@@ -33,7 +33,11 @@ const routes = [
 ];
 
 router.get(routes, (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    hasApiKey: Boolean(process.env.OPENROUTER_API_KEY?.trim()),
+  });
 });
 
 // API key status endpoint used by the Settings modal. The key is supplied by the user and
@@ -44,8 +48,8 @@ const keyStatusRoutes = [
   '/.netlify/functions/api/key-status',
 ];
 
-router.post(keyStatusRoutes, async (req, res) => {
-  const apiKey = (req.body?.apiKey || '').toString().trim();
+router.post(keyStatusRoutes, async (_req, res) => {
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
 
   if (!apiKey) {
     res.json({ configured: false, valid: false });
@@ -336,16 +340,15 @@ router.post(chatStreamRoutes, async (req, res) => {
   const {
     messages,
     modelId = 'gemini-3.8-flash',
-    apiKey: userKey = '',
     systemInstruction = '',
     customInstructions = '',
     webSearch = false,
   } = req.body;
 
-  if (!userKey) {
-    res.status(400).json({
-      error:
-        'No API key provided. Open Settings → API key and paste your OpenRouter key (get one at https://openrouter.ai/keys).',
+  const serverKey = process.env.OPENROUTER_API_KEY?.trim();
+  if (!serverKey) {
+    res.status(500).json({
+      error: 'No OpenRouter API key is configured on the server. Set OPENROUTER_API_KEY.',
     });
     return;
   }
@@ -354,17 +357,6 @@ router.post(chatStreamRoutes, async (req, res) => {
     res.status(400).json({ error: 'Messages array is required' });
     return;
   }
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders?.();
-
-  let isAborted = false;
-  req.on('close', () => {
-    isAborted = true;
-  });
 
   try {
     let combinedSystem = `You are ChatGPT, a large language model trained by OpenAI (embodied here with state-of-the-art AI intelligence).
@@ -435,10 +427,13 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
       model = `${model}:online`;
     }
 
+    // Streaming upstream request. NOTE: in this bun runtime the response headers must NOT
+    // be flushed before the outbound fetch (it hangs the body drain), and Node-style
+    // req.on('close') fires immediately, so we do not use an isAborted guard here.
     const upstream = await fetch(OPENROUTER_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${userKey}`,
+        Authorization: `Bearer ${serverKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -448,11 +443,18 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
       }),
     });
 
+    // Set SSE headers only after the upstream call completes: flushing response headers
+    // before an outbound fetch hangs the fetch body drain in this bun runtime.
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
     if (!upstream.ok || !upstream.body) {
       let errorMsg = `OpenRouter responded with status ${upstream.status}`;
       try {
-        const data = await upstream.json();
-        errorMsg = data?.error?.message || data?.error || errorMsg;
+        const errData = await upstream.json();
+        errorMsg = errData?.error?.message || errData?.error || errorMsg;
       } catch {}
       res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
       res.write(`data: [DONE]\n\n`);
@@ -465,7 +467,6 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
     let buffer = '';
 
     while (true) {
-      if (isAborted) break;
       const { value, done } = await reader.read();
       if (done) break;
 
@@ -493,13 +494,15 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
       }
     }
 
-    if (!isAborted) {
-      res.write(`data: [DONE]\n\n`);
-      res.end();
-    }
+    res.write(`data: [DONE]\n\n`);
+    res.end();
   } catch (error: any) {
-    console.error('Error during streaming:', error);
-    if (!isAborted) {
+    console.error('Error during chat completion:', error);
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
       const errorMsg = error?.message || 'An error occurred while generating the response.';
       res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
       res.write(`data: [DONE]\n\n`);

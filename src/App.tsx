@@ -313,7 +313,6 @@ export default function App() {
         body: JSON.stringify({
           messages: cleanMessages,
           modelId,
-          apiKey: settings.apiKey,
           customInstructions: settings.customInstructions,
           webSearch,
           tone: settings.systemTone,

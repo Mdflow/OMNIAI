@@ -39,29 +39,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const [keyStatus, setKeyStatus] = useState<any>(null);
   const [isCheckingKey, setIsCheckingKey] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState(settings.apiKey || '');
-  const [showKey, setShowKey] = useState(false);
 
   const checkApiStatus = async () => {
-    const key = apiKeyInput.trim();
-    // Persist the entered key immediately so chat can use it.
-    onSaveSettings({ apiKey: key });
-    if (!key) {
-      setKeyStatus({ configured: false, valid: false });
-      return;
-    }
     setIsCheckingKey(true);
     try {
       const res = await fetch('/api/key-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: key }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       setKeyStatus(data);
     } catch (err: any) {
       setKeyStatus({
-        configured: true,
+        configured: false,
         valid: false,
         error: 'Could not contact server to verify API key.',
       });
@@ -72,7 +63,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setApiKeyInput(settings.apiKey || '');
       setKeyStatus(null);
     }
   }, [isOpen]);
@@ -199,7 +189,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </select>
               </div>
 
-              {/* API Key (user-supplied, OpenAI-compatible / OpenRouter) */}
+              {/* API Key (server-managed, shared across all visitors) */}
               <div className={`p-4 rounded-xl border ${isDark ? 'bg-zinc-800/50 border-zinc-700/80' : 'bg-zinc-50 border-zinc-200'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="font-semibold text-xs text-inherit flex items-center gap-1.5">
@@ -217,27 +207,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </button>
                 </div>
 
-                <div className="relative mb-3">
-                  <input
-                    type={showKey ? 'text' : 'password'}
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    onBlur={() => onSaveSettings({ apiKey: apiKeyInput.trim() })}
-                    placeholder="Paste your OpenRouter API key (sk-or-v1-…)"
-                    spellCheck={false}
-                    autoComplete="off"
-                    className={`w-full pr-16 pl-3 py-2 rounded-xl text-xs font-mono border focus:outline-hidden ${
-                      isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowKey((s) => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-zinc-400 hover:text-emerald-400"
-                  >
-                    {showKey ? 'Hide' : 'Show'}
-                  </button>
-                </div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed mb-3">
+                  The API key is managed on the server and shared across all visitors — no setup needed.
+                </p>
 
                 {keyStatus ? (
                   keyStatus.valid ? (
@@ -246,53 +218,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div>
                         <div className="font-semibold">Connected & Working</div>
                         <div className="text-[11px] text-zinc-400 mt-0.5">
-                          Detected key: <span className="font-mono text-zinc-300">{keyStatus.source}</span> ({keyStatus.keyPreview})
-                        </div>
-                      </div>
-                    </div>
-                  ) : keyStatus.configured ? (
-                    <div className="flex items-start gap-2 text-xs text-amber-400">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-semibold">Key Detected, but Rejected:</div>
-                        <div className="text-[11px] text-zinc-300 mt-1 bg-amber-950/40 border border-amber-800/50 p-2 rounded-lg font-mono break-all">
-                          {keyStatus.error || 'Invalid API key.'}
-                        </div>
-                        <div className="text-[11px] text-zinc-400 mt-1.5">
-                          Get a key from{' '}
-                          <a
-                            href="https://openrouter.ai/keys"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-emerald-400 underline"
-                          >
-                            openrouter.ai/keys
-                          </a>
+                          Server key active ({keyStatus.keyPreview})
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-start gap-2 text-xs text-red-400">
+                    <div className="flex items-start gap-2 text-xs text-amber-400">
                       <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold">No API Key Entered</div>
-                        <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                          Paste your API key above to enable chat. Get one from{' '}
-                          <a
-                            href="https://openrouter.ai/keys"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-emerald-400 underline"
-                          >
-                            openrouter.ai/keys
-                          </a>
-                          .
-                        </p>
+                        <div className="font-semibold">Server Key Not Available</div>
+                        <div className="text-[11px] text-zinc-300 mt-1 bg-amber-950/40 border border-amber-800/50 p-2 rounded-lg font-mono break-all">
+                          {keyStatus.error || 'No OpenRouter API key is configured on the server.'}
+                        </div>
                       </div>
                     </div>
                   )
                 ) : (
-                  <div className="text-[11px] text-zinc-400">Click "Check Status" to verify your API key.</div>
+                  <div className="text-[11px] text-zinc-400">Click "Check Status" to verify the server API key.</div>
                 )}
               </div>
 

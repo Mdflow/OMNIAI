@@ -27,13 +27,15 @@ docker compose -f docker-compose.base44.yml up -d
 
 ## Credentials
 
-- There is **no server-side API key**. The AI provider key is supplied by the user in the app
-  (Settings → API key), stored in `localStorage` (`omnichat_settings.apiKey`), and sent with each
-  chat request. The server proxies it to the OpenRouter OpenAI-compatible endpoint
-  (`https://openrouter.ai/api/v1/chat/completions`). Any OpenRouter key works; the previous
-  `GEMINI_API_KEY` server secret is no longer used and can be removed from the secrets dashboard.
-- `/api/key-status` (POST `{ apiKey }`) validates the entered key with a 1-token OpenRouter call
-  and reports `configured` / `valid` / `keyPreview` / `error` for the Settings panel.
+- The AI provider key is a **server-side secret**, `OPENROUTER_API_KEY`, delivered by the
+  platform to `/run/base44/app.env` and loaded into the container via Compose `env_file`. It is
+  shared across all visitors and never reaches the client. The server proxies chat requests to
+  the OpenRouter OpenAI-compatible endpoint (`https://openrouter.ai/api/v1/chat/completions`)
+  using this key.
+- `/api/health` returns `hasApiKey: true|false` depending on whether the server key is present.
+- `/api/key-status` (POST, no body needed) validates the server key with a 1-token OpenRouter
+  call and reports `configured` / `valid` / `keyPreview` / `error` for the Settings panel.
+- The Settings panel no longer asks visitors for a key; it only shows the server key's status.
 
 ## Verifying a change
 
