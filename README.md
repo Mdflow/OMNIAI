@@ -6,12 +6,12 @@ A conversational AI web application inspired by ChatGPT with real-time streaming
 
 ## 🔑 API Key Configuration
 
-When you clone or deploy this project outside of Google AI Studio, you need to provide your own **Gemini API Key**.
+When you clone or deploy this project, you need to provide an **OpenRouter API Key**. The key is used server-side and shared across all visitors.
 
-### 1. Get a Free Gemini API Key
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
-2. Sign in with your Google account.
-3. Click **Create API Key** and copy your key.
+### 1. Get an OpenRouter API Key
+1. Go to [OpenRouter](https://openrouter.ai/keys).
+2. Sign in and click **Create Key**.
+3. Copy your key (starts with `sk-or-v1-`).
 
 ---
 
@@ -29,10 +29,10 @@ When you clone or deploy this project outside of Google AI Studio, you need to p
    cp .env.example .env
    ```
 
-3. **Add your Gemini API Key:**
+3. **Add your OpenRouter API Key:**
    Open the `.env` file in your code editor and set:
    ```env
-   GEMINI_API_KEY=your_actual_gemini_api_key_here
+   OPENROUTER_API_KEY=sk-or-v1-your_key_here
    PORT=3000
    ```
 
@@ -60,8 +60,8 @@ This project includes pre-configured **`netlify.toml`** and serverless function 
    * **Publish directory:** `dist`
    * **Functions directory:** `netlify/functions`
 6. Click **"Environment variables"** (or go to **Site configuration > Environment variables**) and add:
-   * **Key:** `GEMINI_API_KEY`
-   * **Value:** *(paste your Gemini API key from https://aistudio.google.com/app/apikey)*
+   * **Key:** `OPENROUTER_API_KEY`
+   * **Value:** *(paste your OpenRouter API key from https://openrouter.ai/keys)*
 7. Click **"Deploy site"**.
 8. Once deployed, Netlify assigns you a free URL like:
    `https://random-name-123.netlify.app`
@@ -80,14 +80,14 @@ If you prefer other platforms:
   2. In your **Base44** or hosting dashboard, connect your GitHub account and import this repository.
   3. Set the **Build Command** to `npm run build` and **Start Command** to `npm start`.
   4. In **Environment Variables**, set:
-     * **Key:** `GEMINI_API_KEY`
-     * **Value:** *(your Gemini API key from https://aistudio.google.com/app/apikey)*
+     * **Key:** `OPENROUTER_API_KEY`
+     * **Value:** *(your OpenRouter API key from https://openrouter.ai/keys)*
   5. Deploy and attach your Base44 custom domain or default project URL!
 
 * **Google Cloud Run / Docker**:
   Set the environment variable when deploying:
   ```bash
-  --set-env-vars GEMINI_API_KEY="your_api_key_here"
+  --set-env-vars OPENROUTER_API_KEY="your_api_key_here"
   ```
 
 ---

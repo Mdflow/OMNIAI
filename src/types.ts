@@ -35,6 +35,8 @@ export interface UserSettings {
   customInstructions: string;
   webSearchDefault: boolean;
   systemTone: 'balanced' | 'concise' | 'detailed' | 'academic' | 'casual';
+  // User-supplied API key (OpenAI-compatible / OpenRouter). Stored client-side only.
+  apiKey: string;
 }
 
 export interface ExtractedWebPage {
@@ -46,4 +48,4 @@ export interface ExtractedWebPage {
   wordCount: number;
 }
 
-export type AppView = 'chat' | 'browser';
+export type AppView = 'landing' | 'chat' | 'browser';

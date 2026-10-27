@@ -13,12 +13,14 @@ import { MessageItem } from './components/MessageItem';
 import { SettingsModal } from './components/SettingsModal';
 import { ShareModal } from './components/ShareModal';
 import { WebBrowserPage } from './components/WebBrowserPage';
+import { LandingPage } from './components/LandingPage';
 
 const DEFAULT_SETTINGS: UserSettings = {
   theme: 'dark',
   customInstructions: '',
   webSearchDefault: false,
   systemTone: 'balanced',
+  apiKey: '',
 };
 
 export default function App() {
@@ -82,7 +84,7 @@ export default function App() {
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<AppView>('chat');
+  const [currentView, setCurrentView] = useState<AppView>('landing');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -466,54 +468,58 @@ export default function App() {
   const isDark = settings.theme === 'dark';
 
   return (
-    <div className={`flex h-screen w-screen overflow-hidden ${isDark ? 'bg-[#212121] text-zinc-100' : 'bg-white text-zinc-900'}`}>
-      {/* Sidebar */}
-      <Sidebar
-        conversations={conversations}
-        activeId={activeId}
-        isOpen={isSidebarOpen}
-        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        onSelectConversation={handleSelectConversation}
-        onNewChat={handleNewChat}
-        onDeleteConversation={handleDeleteConversation}
-        onRenameConversation={handleRenameConversation}
-        onTogglePin={handleTogglePin}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenShare={() => setIsShareOpen(true)}
-        settings={settings}
-        onUpdateSettings={handleUpdateSettings}
-        currentView={currentView}
-        onSwitchView={setCurrentView}
-      />
-
-      {/* Main Content Area: Chat or Web Browser */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Header */}
-        <ChatHeader
-          isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          selectedModelId={selectedModelId}
-          onSelectModel={setSelectedModelId}
-          onNewChat={handleNewChat}
-          onOpenShare={() => setIsShareOpen(true)}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          isDark={isDark}
-          currentView={currentView}
-          onSwitchView={setCurrentView}
-        />
-
-        {currentView === 'browser' ? (
-          <WebBrowserPage
-            isDark={isDark}
-            onSendToChat={(prompt) => {
-              setCurrentView('chat');
-              handleNewChat();
-              setInput(prompt);
-              handleSendMessage(prompt);
-            }}
+    <div className={`h-screen w-screen overflow-hidden ${isDark ? 'bg-[#212121] text-zinc-100' : 'bg-white text-zinc-900'}`}>
+      {currentView === 'landing' ? (
+        <LandingPage isDark={isDark} onLaunchChat={() => setCurrentView('chat')} />
+      ) : (
+        <div className="flex h-full w-full overflow-hidden">
+          {/* Sidebar */}
+          <Sidebar
+            conversations={conversations}
+            activeId={activeId}
+            isOpen={isSidebarOpen}
+            onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+            onSelectConversation={handleSelectConversation}
+            onNewChat={handleNewChat}
+            onDeleteConversation={handleDeleteConversation}
+            onRenameConversation={handleRenameConversation}
+            onTogglePin={handleTogglePin}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenShare={() => setIsShareOpen(true)}
+            settings={settings}
+            onUpdateSettings={handleUpdateSettings}
+            currentView={currentView}
+            onSwitchView={setCurrentView}
           />
-        ) : (
-          <>
+
+          {/* Main Content Area: Chat or Web Browser */}
+          <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+            {/* Header */}
+            <ChatHeader
+              isSidebarOpen={isSidebarOpen}
+              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+              selectedModelId={selectedModelId}
+              onSelectModel={setSelectedModelId}
+              onNewChat={handleNewChat}
+              onOpenShare={() => setIsShareOpen(true)}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              isDark={isDark}
+              currentView={currentView}
+              onSwitchView={setCurrentView}
+            />
+
+            {currentView === 'browser' ? (
+              <WebBrowserPage
+                isDark={isDark}
+                onSendToChat={(prompt) => {
+                  setCurrentView('chat');
+                  handleNewChat();
+                  setInput(prompt);
+                  handleSendMessage(prompt);
+                }}
+              />
+            ) : (
+              <>
             {/* Message Thread or Empty Welcome State */}
             <div
               ref={scrollContainerRef}
@@ -559,9 +565,11 @@ export default function App() {
               setWebSearch={setWebSearch}
               isDark={isDark}
             />
-          </>
-        )}
-      </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <SettingsModal
