@@ -7,6 +7,22 @@
   NODE_VERSION = "20"
   NETLIFY = "true"
 
+# AI routes use the modern runtime for managed credentials and native streaming.
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/ai/health"
+  status = 200
+
+[[redirects]]
+  from = "/api/key-status"
+  to = "/.netlify/functions/ai/key-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/chat/stream"
+  to = "/.netlify/functions/ai/chat/stream"
+  status = 200
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"

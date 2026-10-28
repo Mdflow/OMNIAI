@@ -253,6 +253,7 @@ ${pageContext}`;
 
             try {
               const parsed = JSON.parse(dataStr);
+              if (parsed.error) throw new Error(parsed.error);
               if (parsed.text) {
                 setAiResponses((prev) => {
                   const updated = [...prev];
@@ -266,7 +267,9 @@ ${pageContext}`;
                   return updated;
                 });
               }
-            } catch {}
+            } catch (error) {
+              if (!(error instanceof SyntaxError)) throw error;
+            }
           }
         }
       }
