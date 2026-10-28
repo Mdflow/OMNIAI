@@ -374,6 +374,7 @@ export default function App() {
               );
             }
           } catch (jsonErr: any) {
+            if (!(jsonErr instanceof SyntaxError)) throw jsonErr;
             if (jsonErr.message && jsonErr.message !== 'Unexpected end of JSON input') {
               console.warn('Chunk parse notice:', jsonErr);
             }

@@ -194,7 +194,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <div className="font-semibold text-xs text-inherit flex items-center gap-1.5">
                     <Key className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>API Key</span>
+                    <span>AI Connection</span>
                   </div>
                   <button
                     type="button"
@@ -218,7 +218,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div>
                         <div className="font-semibold">Connected & Working</div>
                         <div className="text-[11px] text-zinc-400 mt-0.5">
-                          Server key active ({keyStatus.keyPreview})
+                          {keyStatus.source || 'Managed AI connection'}
                         </div>
                       </div>
                     </div>
@@ -226,15 +226,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <div className="flex items-start gap-2 text-xs text-amber-400">
                       <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-semibold">Server Key Not Available</div>
+                        <div className="font-semibold">AI Connection Unavailable</div>
                         <div className="text-[11px] text-zinc-300 mt-1 bg-amber-950/40 border border-amber-800/50 p-2 rounded-lg font-mono break-all">
-                          {keyStatus.error || 'No OpenRouter API key is configured on the server.'}
+                          {keyStatus.error || 'The AI service is temporarily unavailable. Please try again.'}
                         </div>
                       </div>
                     </div>
                   )
                 ) : (
-                  <div className="text-[11px] text-zinc-400">Click "Check Status" to verify the server API key.</div>
+                  <div className="text-[11px] text-zinc-400">Click "Check Status" to verify the AI connection.</div>
                 )}
               </div>
 
