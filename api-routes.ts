@@ -14,7 +14,7 @@ function getProviderConfig() {
     Netlify?: { env: { get: (name: string) => string | undefined } };
   }).Netlify;
   const env = (name: string) => (runtime ? runtime.env.get(name) : process.env[name])?.trim();
-  const apiKey = env('APIMYLLAMA_API_KEY');
+  const apiKey = env('APIMYLlama_API_key');
   const endpoint = env('APIMYLLAMA_CHAT_URL');
   const model = env('APIMYLLAMA_MODEL');
   let error: string | undefined;

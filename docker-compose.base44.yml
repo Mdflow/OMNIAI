@@ -24,7 +24,7 @@ services:
       - PORT=3000
       - BASE44_PREVIEW_MODE
       - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS
-    # The APIMyLlama API key is a server-side secret (APIMYLLAMA_API_KEY), shared across all
+    # The APIMyLlama API key is a server-side secret (APIMYLlama_API_key), shared across all
     # visitors. It is delivered by the platform to /run/base44/app.env and loaded via env_file
     # below; it never lives in the repo or reaches the client.
     env_file:
