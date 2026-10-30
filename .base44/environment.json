@@ -4,8 +4,8 @@
   "startCommand": "docker compose -f docker-compose.base44.yml up -d",
   "secrets": [
     {
-      "name": "OPENROUTER_API_KEY",
-      "description": "OpenRouter API key (sk-or-v1-…) used server-side for all visitors. Get one at https://openrouter.ai/keys",
+      "name": "APIMYLLAMA_API_KEY",
+      "description": "APIMyLlama API key used server-side for all visitors",
       "requiredAtBoot": true
     }
   ]

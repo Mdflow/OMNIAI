@@ -7,23 +7,29 @@ dotenv.config();
 const router = Router();
 router.use(express.json({ limit: '25mb' }));
 
-// Chat is backed by an OpenAI-compatible API (OpenRouter). The API key is supplied by the
-// user in the app and sent with each request; the server proxies it to the provider.
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-
-// The app's model personas are system-prompt modes. All map to one capable, widely-available,
-// vision-capable OpenRouter model so any valid key works without per-model setup.
-const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
-const MODEL_MAP: Record<string, string> = {
-  'gemini-3.6-flash': OPENROUTER_MODEL,
-  'gemini-3.5-flash': OPENROUTER_MODEL,
-  'gemini-3.6-flash-creative': OPENROUTER_MODEL,
-  'gemini-3.6-flash-coder': OPENROUTER_MODEL,
-  'gemini-3.8-flash': OPENROUTER_MODEL,
-  'gemini-3.8-flash-creative': OPENROUTER_MODEL,
-  'gemini-3.8-flash-coder': OPENROUTER_MODEL,
-  'gemini-3.8-flash-thinking': OPENROUTER_MODEL,
-};
+// APIMyLlama credentials and connection details are configured only on the server.
+// The endpoint must accept OpenAI-compatible chat completions, including SSE streaming.
+function getProviderConfig() {
+  const runtime = (globalThis as typeof globalThis & {
+    Netlify?: { env: { get: (name: string) => string | undefined } };
+  }).Netlify;
+  const env = (name: string) => (runtime ? runtime.env.get(name) : process.env[name])?.trim();
+  const apiKey = env('APIMYLLAMA_API_KEY');
+  const endpoint = env('APIMYLLAMA_CHAT_URL');
+  const model = env('APIMYLLAMA_MODEL');
+  let error: string | undefined;
+  if (!apiKey) error = 'No APIMyLlama API key is configured on the server.';
+  else if (!endpoint || !model) error = 'The APIMyLlama chat endpoint and model are not configured on the server.';
+  else {
+    try {
+      const url = new URL(endpoint);
+      if (url.protocol !== 'https:' || url.username || url.password) throw new Error();
+    } catch {
+      error = 'The APIMyLlama chat endpoint must be a valid HTTPS URL without embedded credentials.';
+    }
+  }
+  return { apiKey, endpoint, model, error };
+}
 
 // Helper to handle both /api/* and direct /* routing
 const routes = [
@@ -36,12 +42,11 @@ router.get(routes, (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    hasApiKey: Boolean(process.env.OPENROUTER_API_KEY?.trim()),
+    hasApiKey: Boolean(getProviderConfig().apiKey),
   });
 });
 
-// API key status endpoint used by the Settings modal. The key is supplied by the user and
-// verified with a 1-token OpenRouter call so the UI can tell "missing" from "rejected".
+// Verify the server-managed APIMyLlama configuration without returning any key material.
 const keyStatusRoutes = [
   '/key-status',
   '/api/key-status',
@@ -49,48 +54,40 @@ const keyStatusRoutes = [
 ];
 
 router.post(keyStatusRoutes, async (_req, res) => {
-  const apiKey = process.env.OPENROUTER_API_KEY?.trim();
-
-  if (!apiKey) {
-    res.json({ configured: false, valid: false });
+  const { apiKey, endpoint, model, error } = getProviderConfig();
+  const source = 'APIMyLlama';
+  if (error) {
+    res.json({ configured: Boolean(apiKey), valid: false, source, error });
     return;
   }
 
-  const keyPreview = `...${apiKey.slice(-4)}`;
-  const source = 'OpenRouter';
-
   try {
-    const r = await fetch(OPENROUTER_URL, {
+    const r = await fetch(endpoint!, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: OPENROUTER_MODEL,
+        model,
         max_tokens: 1,
         messages: [{ role: 'user', content: 'ping' }],
       }),
     });
 
     if (r.ok) {
-      res.json({ configured: true, valid: true, source, keyPreview });
+      res.json({ configured: true, valid: true, source });
       return;
     }
 
-    let errorMsg = `OpenRouter responded with status ${r.status}`;
-    try {
-      const data = await r.json();
-      errorMsg = data?.error?.message || data?.error || errorMsg;
-    } catch {}
-    res.json({ configured: true, valid: false, source, keyPreview, error: errorMsg });
+    const errorMsg = `APIMyLlama verification failed (HTTP ${r.status}). Check the server credentials, endpoint, and model.`;
+    res.json({ configured: true, valid: false, source, error: errorMsg });
   } catch (err: any) {
     res.json({
       configured: true,
       valid: false,
       source,
-      keyPreview,
-      error: err?.message || 'Could not contact OpenRouter to verify the API key.',
+      error: 'Could not contact APIMyLlama to verify the server configuration.',
     });
   }
 });
@@ -345,11 +342,13 @@ router.post(chatStreamRoutes, async (req, res) => {
     webSearch = false,
   } = req.body;
 
-  const serverKey = process.env.OPENROUTER_API_KEY?.trim();
-  if (!serverKey) {
-    res.status(500).json({
-      error: 'No OpenRouter API key is configured on the server. Set OPENROUTER_API_KEY.',
-    });
+  const { apiKey: serverKey, endpoint, model, error: configError } = getProviderConfig();
+  if (configError) {
+    res.status(503).json({ error: configError });
+    return;
+  }
+  if (webSearch) {
+    res.status(400).json({ error: 'Web search is not configured for APIMyLlama. Turn off web search to continue.' });
     return;
   }
 
@@ -421,16 +420,10 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
       return;
     }
 
-    let model = MODEL_MAP[modelId] || OPENROUTER_MODEL;
-    // OpenRouter enables web search via the ":online" model suffix.
-    if (webSearch && !model.endsWith(':online')) {
-      model = `${model}:online`;
-    }
-
     // Streaming upstream request. NOTE: in this bun runtime the response headers must NOT
     // be flushed before the outbound fetch (it hangs the body drain), and Node-style
     // req.on('close') fires immediately, so we do not use an isAborted guard here.
-    const upstream = await fetch(OPENROUTER_URL, {
+    const upstream = await fetch(endpoint!, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${serverKey}`,
@@ -451,11 +444,7 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
     res.setHeader('X-Accel-Buffering', 'no');
 
     if (!upstream.ok || !upstream.body) {
-      let errorMsg = `OpenRouter responded with status ${upstream.status}`;
-      try {
-        const errData = await upstream.json();
-        errorMsg = errData?.error?.message || errData?.error || errorMsg;
-      } catch {}
+      const errorMsg = `APIMyLlama chat request failed (HTTP ${upstream.status}). Check the server configuration.`;
       res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
       res.write(`data: [DONE]\n\n`);
       res.end();
@@ -486,7 +475,7 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
             res.write(`data: ${JSON.stringify({ text: delta })}\n\n`);
           }
           if (parsed?.error) {
-            res.write(`data: ${JSON.stringify({ error: parsed.error.message || 'Stream error.' })}\n\n`);
+            res.write(`data: ${JSON.stringify({ error: 'APIMyLlama reported a stream error.' })}\n\n`);
           }
         } catch {
           // Ignore non-JSON keepalive lines.
@@ -497,13 +486,13 @@ Tone should be polite, authentic, knowledgeable, and responsive.`;
     res.write(`data: [DONE]\n\n`);
     res.end();
   } catch (error: any) {
-    console.error('Error during chat completion:', error);
+    console.error('APIMyLlama chat completion failed.');
     if (!res.headersSent) {
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache, no-transform');
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
-      const errorMsg = error?.message || 'An error occurred while generating the response.';
+      const errorMsg = 'Could not complete the APIMyLlama response. Please try again.';
       res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
       res.write(`data: [DONE]\n\n`);
       res.end();
