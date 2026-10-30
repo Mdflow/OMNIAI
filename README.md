@@ -4,91 +4,21 @@ A conversational AI web application inspired by ChatGPT with real-time streaming
 
 ---
 
-## 🔑 API Key Configuration
+## 🔑 APIMyLlama Configuration
 
-When you clone or deploy this project, you need to provide an **OpenRouter API Key**. The key is used server-side and shared across all visitors.
+Chat uses a server-managed APIMyLlama key shared across visitors. Configure these variables in Netlify under **Project configuration → Environment variables**, available to Functions:
 
-### 1. Get an OpenRouter API Key
-1. Go to [OpenRouter](https://openrouter.ai/keys).
-2. Sign in and click **Create Key**.
-3. Copy your key (starts with `sk-or-v1-`).
+- `APIMYLLAMA_API_KEY`: your APIMyLlama key, entered directly in the hosting dashboard.
+- `APIMYLLAMA_CHAT_URL`: the provider's full HTTPS OpenAI-compatible chat completions endpoint.
+- `APIMYLLAMA_MODEL`: a model identifier supported by your provider account.
 
----
+The provider's endpoint, authentication protocol, and model identifiers still need verification against its documentation. The integration expects Bearer authentication, OpenAI-compatible messages, and SSE streaming. It does not assume an endpoint or model based on the provider name.
 
-### 2. Local Setup (Running on your computer)
+Delete the previous provider's environment variable from the hosting dashboard once you configure the replacement. Redeploy after changing environment variables. Never commit credentials or expose them through `VITE_` variables. Settings → Check Status verifies the server configuration without showing any part of the key.
 
-1. **Clone the repository:**
-   ```bash
-   git clone <your-github-repo-url>
-   cd <your-repo-folder>
-   ```
+For local development, copy `.env.example` to `.env`, fill in the three variables, install dependencies, and run `npm run dev`. The app serves on port 3000.
 
-2. **Create your `.env` file:**
-   Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-
-3. **Add your OpenRouter API Key:**
-   Open the `.env` file in your code editor and set:
-   ```env
-   OPENROUTER_API_KEY=sk-or-v1-your_key_here
-   PORT=3000
-   ```
-
-4. **Install dependencies and start the app:**
-   ```bash
-   npm install
-   npm run dev
-   ```
-
-5. **Open in your browser:**
-   Visit [http://localhost:3000](http://localhost:3000).
-
----
-
-### 3. Deploying to Netlify (Get a `.netlify.app` domain)
-
-This project includes pre-configured **`netlify.toml`** and serverless function support for Netlify!
-
-1. **Push your code to GitHub** (via AI Studio's **Export / Push to GitHub** button).
-2. Go to [Netlify](https://app.netlify.com) and log in.
-3. Click **"Add new site"** → **"Import an existing project"**.
-4. Select **GitHub** and choose your repository.
-5. Netlify will automatically detect the settings from `netlify.toml`:
-   * **Build command:** `npm run build`
-   * **Publish directory:** `dist`
-   * **Functions directory:** `netlify/functions`
-6. Click **"Environment variables"** (or go to **Site configuration > Environment variables**) and add:
-   * **Key:** `OPENROUTER_API_KEY`
-   * **Value:** *(paste your OpenRouter API key from https://openrouter.ai/keys)*
-7. Click **"Deploy site"**.
-8. Once deployed, Netlify assigns you a free URL like:
-   `https://random-name-123.netlify.app`
-9. **Change the subdomain name:**
-   * In your Netlify dashboard, go to **Site configuration** → **Change site name**.
-   * Type your preferred name (e.g., `my-omnichat.netlify.app`).
-
----
-
-### 4. Deploying to Other Cloud Hosts (Vercel, Render, Railway, Cloud Run)
-
-If you prefer other platforms:
-
-* **Base44 / Vercel / Render / Railway**:
-  1. Export / Push your repository to **GitHub**.
-  2. In your **Base44** or hosting dashboard, connect your GitHub account and import this repository.
-  3. Set the **Build Command** to `npm run build` and **Start Command** to `npm start`.
-  4. In **Environment Variables**, set:
-     * **Key:** `OPENROUTER_API_KEY`
-     * **Value:** *(your OpenRouter API key from https://openrouter.ai/keys)*
-  5. Deploy and attach your Base44 custom domain or default project URL!
-
-* **Google Cloud Run / Docker**:
-  Set the environment variable when deploying:
-  ```bash
-  --set-env-vars OPENROUTER_API_KEY="your_api_key_here"
-  ```
+Web search has no configured APIMyLlama integration; turn it off when chatting. Image inputs require a model that supports OpenAI-compatible image messages.
 
 ---
 

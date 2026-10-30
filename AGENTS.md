@@ -27,20 +27,20 @@ docker compose -f docker-compose.base44.yml up -d
 
 ## Credentials
 
-- The AI provider key is a **server-side secret**, `OPENROUTER_API_KEY`, delivered by the
+- The AI provider key is a **server-side secret**, `APIMYLLAMA_API_KEY`, delivered by the
   platform to `/run/base44/app.env` and loaded into the container via Compose `env_file`. It is
   shared across all visitors and never reaches the client. The server proxies chat requests to
-  the OpenRouter OpenAI-compatible endpoint (`https://openrouter.ai/api/v1/chat/completions`)
+  the APIMyLlama OpenAI-compatible endpoint configured through `APIMYLLAMA_CHAT_URL` and `APIMYLLAMA_MODEL`
   using this key.
 - `/api/health` returns `hasApiKey: true|false` depending on whether the server key is present.
-- `/api/key-status` (POST, no body needed) validates the server key with a 1-token OpenRouter
-  call and reports `configured` / `valid` / `keyPreview` / `error` for the Settings panel.
+- `/api/key-status` (POST, no body needed) validates the server key with a 1-token APIMyLlama
+  call and reports `configured` / `valid` / `error` for the Settings panel.
 - The Settings panel no longer asks visitors for a key; it only shows the server key's status.
 
 ## Verifying a change
 
 - `curl http://localhost:3000/api/health` → 200 JSON.
 - Load `/` in the preview; the SPA renders the chat UI.
-- Chat (`POST /api/chat/stream`) returns a streamed SSE response once `GEMINI_API_KEY` is set.
+- Chat (`POST /api/chat/stream`) returns a streamed SSE response once APIMyLlama server configuration is set.
 - The in-app browser uses `/api/proxy/browse?url=…` (server-side fetch + cheerio rewrite); it
   needs outbound network from the container.

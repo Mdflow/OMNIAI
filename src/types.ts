@@ -35,7 +35,7 @@ export interface UserSettings {
   customInstructions: string;
   webSearchDefault: boolean;
   systemTone: 'balanced' | 'concise' | 'detailed' | 'academic' | 'casual';
-  // User-supplied API key (OpenAI-compatible / OpenRouter). Stored client-side only.
+  // Legacy settings field; provider authentication uses only the server-managed key.
   apiKey: string;
 }
 

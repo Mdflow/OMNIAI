@@ -208,7 +208,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <p className="text-[11px] text-zinc-400 leading-relaxed mb-3">
-                  The API key is managed on the server and shared across all visitors — no setup needed.
+                  The APIMyLlama API key is managed on the server and shared across all visitors.
                 </p>
 
                 {keyStatus ? (
@@ -218,7 +218,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div>
                         <div className="font-semibold">Connected & Working</div>
                         <div className="text-[11px] text-zinc-400 mt-0.5">
-                          Server key active ({keyStatus.keyPreview})
+                          APIMyLlama server key active
                         </div>
                       </div>
                     </div>
@@ -228,7 +228,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div>
                         <div className="font-semibold">Server Key Not Available</div>
                         <div className="text-[11px] text-zinc-300 mt-1 bg-amber-950/40 border border-amber-800/50 p-2 rounded-lg font-mono break-all">
-                          {keyStatus.error || 'No OpenRouter API key is configured on the server.'}
+                          {keyStatus.error || 'No APIMyLlama API key is configured on the server.'}
                         </div>
                       </div>
                     </div>
