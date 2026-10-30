@@ -27,7 +27,7 @@ docker compose -f docker-compose.base44.yml up -d
 
 ## Credentials
 
-- The AI provider key is a **server-side secret**, `APIMYLLAMA_API_KEY`, delivered by the
+- The AI provider key is a **server-side secret**, `APIMYLlama_API_key`, delivered by the
   platform to `/run/base44/app.env` and loaded into the container via Compose `env_file`. It is
   shared across all visitors and never reaches the client. The server proxies chat requests to
   the APIMyLlama OpenAI-compatible endpoint configured through `APIMYLLAMA_CHAT_URL` and `APIMYLLAMA_MODEL`

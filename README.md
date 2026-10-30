@@ -8,7 +8,7 @@ A conversational AI web application inspired by ChatGPT with real-time streaming
 
 Chat uses a server-managed APIMyLlama key shared across visitors. Configure these variables in Netlify under **Project configuration → Environment variables**, available to Functions:
 
-- `APIMYLLAMA_API_KEY`: your APIMyLlama key, entered directly in the hosting dashboard.
+- `APIMYLlama_API_key`: your APIMyLlama key, entered directly in the hosting dashboard.
 - `APIMYLLAMA_CHAT_URL`: the provider's full HTTPS OpenAI-compatible chat completions endpoint.
 - `APIMYLLAMA_MODEL`: a model identifier supported by your provider account.
 
